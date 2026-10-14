@@ -54,21 +54,26 @@ enum StatusIcon {
         let mouthY = screen.minY + screen.height * 0.34
 
         guard taped else {
-            // Konuşan hâl: kaş yok, ağız yampiri bir yarım ay —
-            // üstü düz, altı yuvarlak, hafif eğik: keyifli, şarkı söyler gibi.
-            let mouthWidth = size * 0.32
-            let depth = size * 0.11
-            let path = NSBezierPath()
-            path.move(to: NSPoint(x: -mouthWidth / 2, y: 0))
-            path.line(to: NSPoint(x: mouthWidth / 2, y: 0))
-            path.curve(to: NSPoint(x: -mouthWidth / 2, y: 0),
-                       controlPoint1: NSPoint(x: mouthWidth / 2, y: -depth * 1.7),
-                       controlPoint2: NSPoint(x: -mouthWidth / 2, y: -depth * 1.7))
-            let transform = NSAffineTransform()
-            transform.translateX(by: size * 0.52, yBy: screen.minY + screen.height * 0.36)
-            transform.rotate(byDegrees: -14)
-            path.transform(using: transform as AffineTransform)
-            path.fill()
+            // Konuşan hâl: yarım açık smirk — solda ince bir çizgi, sağda hafif açık
+            // bir köşe. Tam yarım ay ("D") fazla neşeli ve simetrik duruyordu.
+            let y = screen.minY + screen.height * 0.34
+
+            let line = NSBezierPath()
+            line.move(to: NSPoint(x: size * 0.33, y: y))
+            line.curve(to: NSPoint(x: size * 0.52, y: y - size * 0.01),
+                       controlPoint1: NSPoint(x: size * 0.40, y: y - size * 0.03),
+                       controlPoint2: NSPoint(x: size * 0.47, y: y - size * 0.03))
+            line.lineWidth = size * 0.07
+            line.lineCapStyle = .round
+            line.stroke()
+
+            let open = NSBezierPath()
+            open.move(to: NSPoint(x: size * 0.50, y: y + size * 0.015))
+            open.line(to: NSPoint(x: size * 0.70, y: y + size * 0.075))
+            open.curve(to: NSPoint(x: size * 0.50, y: y + size * 0.015),
+                       controlPoint1: NSPoint(x: size * 0.66, y: y - size * 0.07),
+                       controlPoint2: NSPoint(x: size * 0.55, y: y - size * 0.06))
+            open.fill()
             return
         }
 

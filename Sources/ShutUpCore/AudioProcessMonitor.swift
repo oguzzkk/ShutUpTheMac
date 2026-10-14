@@ -11,6 +11,7 @@ public final class AudioProcessMonitor {
     public var onChange: (([AudioProcess]) -> Void)?
 
     private var listListener: AudioObjectPropertyListenerBlock?
+    private var pendingRefresh: DispatchWorkItem?
     private var playbackListeners: [AudioObjectID: AudioObjectPropertyListenerBlock] = [:]
 
     public init() {}
@@ -21,7 +22,7 @@ public final class AudioProcessMonitor {
         var address = propertyAddress(kAudioHardwarePropertyProcessObjectList)
         // Dinleyici ses kuyruğunda tetiklenir; liste güncellemesi ana kuyruğa taşınır.
         let listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
-            DispatchQueue.main.async { self?.refresh() }
+            self?.scheduleRefresh()
         }
         listListener = listener
         AudioObjectAddPropertyListenerBlock(
@@ -42,6 +43,18 @@ public final class AudioProcessMonitor {
             removePlaybackListener(listener, from: objectID)
         }
         playbackListeners.removeAll()
+    }
+
+    /// Core Audio bildirimleri saniyede onlarca kez gelebiliyor. Her birinde listeyi
+    /// yeniden kurmak arayüzü sürekli tazeliyor ve açık menüleri kapatıyordu.
+    private func scheduleRefresh() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            pendingRefresh?.cancel()
+            let work = DispatchWorkItem { [weak self] in self?.refresh() }
+            pendingRefresh = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: work)
+        }
     }
 
     public func refresh() {
@@ -67,7 +80,7 @@ public final class AudioProcessMonitor {
         for process in processes where playbackListeners[process.id] == nil {
             var address = propertyAddress(kAudioProcessPropertyIsRunningOutput)
             let listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
-                DispatchQueue.main.async { self?.refresh() }
+                self?.scheduleRefresh()
             }
             if AudioObjectAddPropertyListenerBlock(process.id, &address, audioListenerQueue, listener) == noErr {
                 playbackListeners[process.id] = listener

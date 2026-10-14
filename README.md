@@ -1,5 +1,10 @@
 # Shut Up The Mac
 
+[![license: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-4c6ef5)](LICENSE)
+
+> **Free for personal and other noncommercial use.** Using it in or alongside something
+> commercial needs permission from the copyright holder — see [LICENSE](LICENSE).
+
 Per-app mute and volume control for macOS, built on Core Audio process taps — **without a virtual audio device**.
 
 Your default output device never changes, no driver is installed, and no audio is resampled through a kernel extension. The app opens a tap on the processes you want to silence, reads it, and emits silence (or a scaled copy) instead.

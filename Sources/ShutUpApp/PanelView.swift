@@ -156,31 +156,12 @@ struct PanelView: View {
                 Button(L.t("unmuteAll")) { model.unmuteAll() }
             }
             Spacer()
-            Menu {
-                Menu(L.t("language")) {
-                    ForEach(L.languages, id: \.code) { entry in
-                        Button {
-                            model.setLanguage(entry.code)
-                        } label: {
-                            // Seçili dil onay işaretiyle belli olsun
-                            Text(entry.code == model.languageCode ? "✓ " + entry.name : entry.name)
-                        }
-                    }
-                }
-                Divider()
-                Toggle(L.t("launchAtLogin"), isOn: Binding(
-                    get: { model.launchesAtLogin },
-                    set: { model.launchesAtLogin = $0 }
-                ))
-                Toggle(L.t("showSystemProcesses", model.hiddenSystemCount),
-                       isOn: $model.showsSystemProcesses)
-                Divider()
-                Button(L.t("quit")) { model.quit() }
+            Button {
+                model.showOptionsMenu()
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
+            .buttonStyle(.plain)
         }
         .font(.system(size: 12))
         .buttonStyle(.plain)

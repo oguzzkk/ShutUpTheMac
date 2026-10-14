@@ -30,7 +30,10 @@ final class ShutUpModel: ObservableObject {
     init() {
         monitor.onChange = { [weak self] processes in
             guard let self else { return }
-            groups = Self.excludingSelf(AppGroup.group(processes, settings: settings))
+            let fresh = Self.excludingSelf(AppGroup.group(processes, settings: settings))
+            // Yalnızca gerçekten değiştiyse yayınla: her tazelemede yayınlamak
+            // paneli sürekli yeniden çizdiriyor ve açık alt menüyü kapatıyordu.
+            if fresh != groups { groups = fresh }
             scheduleApply()
         }
         monitor.start()
@@ -114,6 +117,10 @@ final class ShutUpModel: ObservableObject {
     // MARK: Arayüz dili
 
     var languageCode: String { settings.languageCode }
+
+    private lazy var optionsMenu = OptionsMenu(model: self)
+
+    func showOptionsMenu() { optionsMenu.show() }
 
     func setLanguage(_ code: String) {
         settings.languageCode = code
@@ -435,7 +442,8 @@ final class ShutUpModel: ObservableObject {
 
     private func reapply() {
         monitor.refresh()
-        groups = Self.excludingSelf(AppGroup.group(monitor.processes, settings: settings))
+        let fresh = Self.excludingSelf(AppGroup.group(monitor.processes, settings: settings))
+        if fresh != groups { groups = fresh }
         let targets = audioTargets()
         requestPermissionIfNeeded(hasTargets: !targets.isEmpty)
         volumeEngine.permissionGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
