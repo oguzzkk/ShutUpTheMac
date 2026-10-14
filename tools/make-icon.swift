@@ -43,8 +43,8 @@ func drawIcon(size: CGFloat) -> NSImage {
 
         // Sinirli kaş: dış uç yukarıda, iç uç aşağıda
         let brow = NSBezierPath()
-        brow.move(to: NSPoint(x: x - sign * size * 0.045, y: eyeY + size * 0.085))
-        brow.line(to: NSPoint(x: x + sign * size * 0.050, y: eyeY + size * 0.045))
+        brow.move(to: NSPoint(x: x - sign * size * 0.045, y: eyeY + size * 0.045))
+        brow.line(to: NSPoint(x: x + sign * size * 0.050, y: eyeY + size * 0.085))
         brow.lineWidth = size * 0.022
         brow.lineCapStyle = .round
         ink.setStroke()

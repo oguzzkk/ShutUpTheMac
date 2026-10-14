@@ -42,7 +42,7 @@ enum StatusIcon {
                      xRadius: lineWidth / 2, yRadius: lineWidth / 2).fill()
 
         // Gözler
-        let eyeY = screen.minY + screen.height * (taped ? 0.64 : 0.62)
+        let eyeY = screen.minY + screen.height * (taped ? 0.58 : 0.64)
         let eyeSize = size * 0.115
         let eyeSpacing = size * 0.195
         for sign in [-1.0, 1.0] as [CGFloat] {
@@ -54,10 +54,21 @@ enum StatusIcon {
         let mouthY = screen.minY + screen.height * 0.34
 
         guard taped else {
-            // Açık ağız: susturulmamışken Mac konuşuyor.
-            let width = size * 0.23, height = size * 0.20
-            NSBezierPath(ovalIn: NSRect(x: size * 0.5 - width / 2, y: mouthY - height / 2,
-                                        width: width, height: height)).fill()
+            // Konuşan hâl: kaş yok, ağız yampiri bir yarım ay —
+            // üstü düz, altı yuvarlak, hafif eğik: keyifli, şarkı söyler gibi.
+            let mouthWidth = size * 0.32
+            let depth = size * 0.11
+            let path = NSBezierPath()
+            path.move(to: NSPoint(x: -mouthWidth / 2, y: 0))
+            path.line(to: NSPoint(x: mouthWidth / 2, y: 0))
+            path.curve(to: NSPoint(x: -mouthWidth / 2, y: 0),
+                       controlPoint1: NSPoint(x: mouthWidth / 2, y: -depth * 1.7),
+                       controlPoint2: NSPoint(x: -mouthWidth / 2, y: -depth * 1.7))
+            let transform = NSAffineTransform()
+            transform.translateX(by: size * 0.52, yBy: screen.minY + screen.height * 0.36)
+            transform.rotate(byDegrees: -14)
+            path.transform(using: transform as AffineTransform)
+            path.fill()
             return
         }
 
@@ -65,8 +76,8 @@ enum StatusIcon {
         for sign in [-1.0, 1.0] as [CGFloat] {
             let x = size * 0.50 + sign * eyeSpacing
             let brow = NSBezierPath()
-            brow.move(to: NSPoint(x: x - sign * size * 0.068, y: eyeY + size * 0.130))
-            brow.line(to: NSPoint(x: x + sign * size * 0.068, y: eyeY + size * 0.072))
+            brow.move(to: NSPoint(x: x - sign * size * 0.068, y: eyeY + size * 0.082))
+            brow.line(to: NSPoint(x: x + sign * size * 0.068, y: eyeY + size * 0.145))
             brow.lineWidth = lineWidth * 0.95
             brow.lineCapStyle = .round
             brow.stroke()

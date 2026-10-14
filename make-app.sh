@@ -10,6 +10,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/ShutUpApp "$APP/Contents/MacOS/ShutUpTheMac"
 cp .build/release/shutup "$APP/Contents/Resources/shutup"
+cp translations.json "$APP/Contents/Resources/translations.json"
 
 # İkon: yoksa üret (Xcode gerekmez), sonra pakete koy
 if [ ! -f build/ShutUpTheMac.icns ]; then

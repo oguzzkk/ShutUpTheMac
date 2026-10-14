@@ -71,7 +71,13 @@ Per-app paths matter: with one shared path, unmuting a single app tore down and 
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[PolyForm Noncommercial 1.0.0](LICENSE) — free for any noncommercial purpose:
+personal use, hobby projects, study, research, and nonprofit organizations.
+
+Commercial use needs a separate license from the copyright holder. If you want to
+use this in or alongside something you make money from, open an issue and ask.
+
+(This is a source-available license, not an OSI-approved open source one.)
 
 ## Notes
 

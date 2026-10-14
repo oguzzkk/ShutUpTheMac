@@ -17,15 +17,15 @@ struct PanelView: View {
 
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 2) {
-                    section(title: model.playingGroups.isEmpty ? nil : "Şu an çalıyor",
+                    section(title: model.playingGroups.isEmpty ? nil : L.t("nowPlaying"),
                             groups: model.playingGroups)
 
                     if !model.quietGroups.isEmpty {
-                        section(title: "Sessiz uygulamalar", groups: model.quietGroups)
+                        section(title: L.t("quietApps"), groups: model.quietGroups)
                     }
 
                     if model.visibleGroups.isEmpty {
-                        Text(model.searchText.isEmpty ? "Ses üreten uygulama yok" : "Eşleşme yok")
+                        Text(model.searchText.isEmpty ? L.t("noAudioApps") : L.t("noMatch"))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.vertical, 24)
@@ -52,15 +52,15 @@ struct PanelView: View {
                 .foregroundStyle(.orange)
                 .font(.system(size: 12))
             VStack(alignment: .leading, spacing: 4) {
-                Text("Ses kısma için izin gerekiyor")
+                Text(L.t("permissionTitle"))
                     .font(.system(size: 12, weight: .semibold))
-                Text("Susturma çalışıyor. Seviyeyi kısmak içinse sistem sesini okuma izni şart.")
+                Text(L.t("permissionBody"))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 10) {
-                    Button("İzin ver") { model.requestAudioPermission() }
-                    Button("Ayarları aç") { model.openPrivacySettings() }
+                    Button(L.t("grantPermission")) { model.requestAudioPermission() }
+                    Button(L.t("openSettings")) { model.openPrivacySettings() }
                 }
                 .font(.system(size: 11))
                 .buttonStyle(.link)
@@ -74,7 +74,7 @@ struct PanelView: View {
     private var searchBar: some View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass").foregroundStyle(.secondary).font(.system(size: 12))
-            TextField("Uygulama ara", text: $model.searchText)
+            TextField(L.t("search"), text: $model.searchText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))
             if !model.searchText.isEmpty {
@@ -115,7 +115,7 @@ struct PanelView: View {
     @ViewBuilder
     private var offlineSection: some View {
         if !model.offlineMuted.isEmpty {
-            Text("Kapalı ama susturulmuş")
+            Text(L.t("offlineMuted"))
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 6)
@@ -126,7 +126,7 @@ struct PanelView: View {
                     Text(bundleID.split(separator: ".").last.map(String.init) ?? bundleID)
                         .font(.system(size: 13))
                     Spacer()
-                    Button("Aç") { model.setMuted(false, bundleID: bundleID) }
+                    Button(L.t("unmuteShort")) { model.setMuted(false, bundleID: bundleID) }
                         .buttonStyle(.plain)
                         .foregroundStyle(.blue)
                         .font(.system(size: 12))
@@ -143,28 +143,39 @@ struct PanelView: View {
                 model.toggleMuteAll()
             } label: {
                 if model.bulkActive {
-                    Label("Geri al", systemImage: "arrow.uturn.backward")
+                    Label(L.t("undo"), systemImage: "arrow.uturn.backward")
                         .foregroundStyle(.orange)
                 } else {
-                    Text("Hepsini sustur")
+                    Text(L.t("muteAll"))
                 }
             }
-            .help(model.bulkActive ? "Hepsini sustur'dan önceki duruma dön" : "Listedeki her şeyi sustur")
+            .help(model.bulkActive ? L.t("undo") : L.t("muteAll"))
 
-            Button("Öndeki hariç") { model.soloFrontmost() }
+            Button(L.t("exceptFront")) { model.soloFrontmost() }
             if model.mutedCount > 0 {
-                Button("Tümünü aç") { model.unmuteAll() }
+                Button(L.t("unmuteAll")) { model.unmuteAll() }
             }
             Spacer()
             Menu {
-                Toggle("Girişte başlat", isOn: Binding(
+                Menu(L.t("language")) {
+                    ForEach(L.languages, id: \.code) { entry in
+                        Button {
+                            model.setLanguage(entry.code)
+                        } label: {
+                            // Seçili dil onay işaretiyle belli olsun
+                            Text(entry.code == model.languageCode ? "✓ " + entry.name : entry.name)
+                        }
+                    }
+                }
+                Divider()
+                Toggle(L.t("launchAtLogin"), isOn: Binding(
                     get: { model.launchesAtLogin },
                     set: { model.launchesAtLogin = $0 }
                 ))
-                Toggle("Sistem süreçlerini göster (\(model.hiddenSystemCount))",
+                Toggle(L.t("showSystemProcesses", model.hiddenSystemCount),
                        isOn: $model.showsSystemProcesses)
                 Divider()
-                Button("Çık") { model.quit() }
+                Button(L.t("quit")) { model.quit() }
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
@@ -208,12 +219,12 @@ private struct GroupRow: View {
 
     private var subtitle: String? {
         if volume > 0 && volume < 1 {
-            return "%\(Int(volume * 100))" + (group.members.count > 1 ? " · \(group.members.count) süreç" : "")
+            return "%\(Int(volume * 100))" + (group.members.count > 1 ? " · " + L.t("processCount", group.members.count) : "")
         }
         guard group.members.count > 1 else { return nil }
         return group.isPlaying
-            ? "\(group.playingCount)/\(group.members.count) süreç ses çalıyor"
-            : "\(group.members.count) süreç"
+            ? L.t("playingOfCount", group.playingCount, group.members.count)
+            : L.t("processCount", group.members.count)
     }
 
     var body: some View {
@@ -249,7 +260,7 @@ private struct GroupRow: View {
                 .controlSize(.mini)
                 .frame(width: 58)
                 .tint(.secondary)
-                .help("Ses seviyesi")
+                .help(L.t("volumeTooltip"))
             }
 
             Image(systemName: "waveform")
@@ -279,7 +290,7 @@ private struct GroupRow: View {
             .frame(width: 12)
             .opacity(group.members.count > 1 ? 1 : 0)
             .allowsHitTesting(group.members.count > 1)
-            .help("Alt süreçleri göster")
+            .help(L.t("showSubprocesses"))
 
             Button { model.toggle(group) } label: {
                 Image(systemName: isMuted ? "speaker.slash.fill" : speakerSymbol)
@@ -288,7 +299,7 @@ private struct GroupRow: View {
             }
             .buttonStyle(.plain)
             .frame(width: 16)
-            .help(isMuted ? "Sesi aç" : "Sustur")
+            .help(isMuted ? L.t("unmute") : L.t("mute"))
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 5)
@@ -366,6 +377,6 @@ private struct MemberRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { if !groupMuted { model.toggleProcess(member) } }
-        .help(groupMuted ? "Uygulamanın tamamı zaten susturulmuş" : "Yalnızca bu süreci sustur")
+        .help(groupMuted ? L.t("wholeAppMuted") : L.t("muteThisProcessOnly"))
     }
 }

@@ -169,6 +169,23 @@ do {
             print("🔇 hepsi susturuldu (geri almak için tekrar çalıştır)")
         }
 
+    case "lang", "dil":
+        if arguments.count >= 2 {
+            let code = arguments[1]
+            guard L.languages.contains(where: { $0.code == code }) else {
+                print("bilinmeyen dil: \(code)")
+                print("seçenekler: " + L.languages.map(\.code).joined(separator: " "))
+                exit(1)
+            }
+            settings.languageCode = code
+            settings.broadcastChange()
+            print("dil: \(L.languages.first { $0.code == code }?.name ?? code)")
+        } else {
+            for entry in L.languages {
+                print((entry.code == settings.languageCode ? "✓ " : "  ") + entry.code.padding(toLength: 4, withPad: " ", startingAt: 0) + entry.name)
+            }
+        }
+
     case "forget", "sirala-sifirla":
         settings.resetUsage()
         print("kullanım sıklığı sıfırlandı, sıralama alfabetiğe döndü")
@@ -189,6 +206,7 @@ do {
           shutup volume <uygulama> <0-100>  seviye ayarla
           shutup solo <uygulama>         bu hariç hepsini sustur / tekrar çalıştırınca geri al
           shutup muteall                 hepsini sustur / tekrar çalıştırınca geri al
+          shutup lang [kod]              arayüz dilini göster / değiştir
           shutup status                  uygulamanın o anki durumu
           shutup reset                   hepsini tam sese döndür
 

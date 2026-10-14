@@ -32,11 +32,9 @@ public struct AppGroup: Identifiable, Hashable, Sendable {
     /// Teknik süreç adı yerine insanın tanıyacağı ad.
     /// macOS'un uyarı ve bildirim sesleri `systemsoundserverd` adlı daemon'dan çıkar;
     /// kullanıcı bunu "sistem sesleri" olarak arar.
-    static let friendlyNames: [String: String] = [
-        "systemsoundserverd": "Sistem sesleri",
-        "com.apple.controlcenter": "Denetim Merkezi",
-        "com.apple.WindowServer": "Arayüz sesleri",
-    ]
+    static var friendlyNames: [String: String] {
+        ["systemsoundserverd": L.t("systemSounds")]
+    }
 
     /// Sistem süreci olsa da listede görünmesi gerekenler.
     static let alwaysVisible: Set<String> = ["systemsoundserverd"]

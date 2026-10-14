@@ -110,6 +110,15 @@ final class ShutUpModel: ObservableObject {
 
     /// Kullanıcı bu uygulamaya dokundu — sıralamada yukarı çıkmasını sağlar.
     func recordUsage(_ bundleID: String) { settings.recordUsage(bundleID) }
+
+    // MARK: Arayüz dili
+
+    var languageCode: String { settings.languageCode }
+
+    func setLanguage(_ code: String) {
+        settings.languageCode = code
+        objectWillChange.send()
+    }
     var hiddenSystemCount: Int { groups.filter { !$0.isUserFacing }.count }
 
     /// Kapalı olduğu hâlde susturulmuş kalanlar — "sesim neden yok" tuzağına karşı.

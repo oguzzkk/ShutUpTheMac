@@ -20,6 +20,7 @@ public final class Settings {
     private let snapshotKey = "volumesSnapshot"
     private let usageKey = "usageCounts"
     private let knownMembersKey = "knownMemberBundleIDs"
+    private let languageKey = "languageCode"
 
     private init() {
         defaults = UserDefaults(suiteName: Self.suiteName) ?? .standard
@@ -45,6 +46,13 @@ public final class Settings {
     /// Tam sesteki uygulamalar kayıtta tutulmaz, dolayısıyla burada da yer almaz.
     public var attenuatedVolumes: [String: Float] {
         volumes.filter { $0.value < 1 }
+    }
+
+    // MARK: Arayüz dili
+
+    public var languageCode: String {
+        get { defaults.string(forKey: languageKey) ?? "tr" }
+        set { defaults.set(newValue, forKey: languageKey) }
     }
 
     // MARK: Öğrenilen süreç kimlikleri
