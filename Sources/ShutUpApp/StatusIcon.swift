@@ -41,40 +41,41 @@ enum StatusIcon {
                                          width: footWidth, height: lineWidth * 1.15),
                      xRadius: lineWidth / 2, yRadius: lineWidth / 2).fill()
 
-        // Gözler
-        let eyeY = screen.minY + screen.height * (taped ? 0.58 : 0.64)
-        let eyeSize = size * 0.115
-        let eyeSpacing = size * 0.195
-        for sign in [-1.0, 1.0] as [CGFloat] {
-            let x = size * 0.50 + sign * eyeSpacing
-            NSBezierPath(ovalIn: NSRect(x: x - eyeSize / 2, y: eyeY - eyeSize / 2,
-                                        width: eyeSize, height: eyeSize)).fill()
-        }
+        let eyeY = screen.minY + screen.height * (taped ? 0.58 : 0.66)
+        let eyeSpacing = size * (taped ? 0.195 : 0.185)
 
         let mouthY = screen.minY + screen.height * 0.34
 
         guard taped else {
-            // Konuşan hâl: yarım açık smirk — solda ince bir çizgi, sağda hafif açık
-            // bir köşe. Tam yarım ay ("D") fazla neşeli ve simetrik duruyordu.
-            let y = screen.minY + screen.height * 0.34
+            // Şarkı söyleyen hâl: keyifle kapanmış gözler (^ ^) + eğik açık ağız.
+            // Asıl "şarkı" hissini veren kapalı gözler; smirk denemeleri sadece
+            // alaycı duruyordu, nota ise 18 pikselde lekeye dönüşüyordu.
+            for sign in [-1.0, 1.0] as [CGFloat] {
+                let x = size * 0.50 + sign * eyeSpacing
+                let arc = NSBezierPath()
+                arc.appendArc(withCenter: NSPoint(x: x, y: eyeY - size * 0.02), radius: size * 0.075,
+                              startAngle: 20, endAngle: 160, clockwise: false)
+                arc.lineWidth = size * 0.065
+                arc.lineCapStyle = .round
+                arc.stroke()
+            }
 
-            let line = NSBezierPath()
-            line.move(to: NSPoint(x: size * 0.33, y: y))
-            line.curve(to: NSPoint(x: size * 0.52, y: y - size * 0.01),
-                       controlPoint1: NSPoint(x: size * 0.40, y: y - size * 0.03),
-                       controlPoint2: NSPoint(x: size * 0.47, y: y - size * 0.03))
-            line.lineWidth = size * 0.07
-            line.lineCapStyle = .round
-            line.stroke()
-
-            let open = NSBezierPath()
-            open.move(to: NSPoint(x: size * 0.50, y: y + size * 0.015))
-            open.line(to: NSPoint(x: size * 0.70, y: y + size * 0.075))
-            open.curve(to: NSPoint(x: size * 0.50, y: y + size * 0.015),
-                       controlPoint1: NSPoint(x: size * 0.66, y: y - size * 0.07),
-                       controlPoint2: NSPoint(x: size * 0.55, y: y - size * 0.06))
-            open.fill()
+            let mouth = NSBezierPath(ovalIn: NSRect(x: -size * 0.12, y: -size * 0.09,
+                                                    width: size * 0.24, height: size * 0.18))
+            let transform = NSAffineTransform()
+            transform.translateX(by: size * 0.52, yBy: screen.minY + screen.height * 0.32)
+            transform.rotate(byDegrees: -20)
+            mouth.transform(using: transform as AffineTransform)
+            mouth.fill()
             return
+        }
+
+        // Bantlı hâlde gözler yuvarlak
+        let eyeSize = size * 0.115
+        for sign in [-1.0, 1.0] as [CGFloat] {
+            let x = size * 0.50 + sign * eyeSpacing
+            NSBezierPath(ovalIn: NSRect(x: x - eyeSize / 2, y: eyeY - eyeSize / 2,
+                                        width: eyeSize, height: eyeSize)).fill()
         }
 
         // Kızgın kaşlar
