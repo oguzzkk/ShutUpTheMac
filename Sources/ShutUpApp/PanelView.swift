@@ -40,7 +40,7 @@ struct PanelView: View {
             Divider()
             footer
         }
-        .frame(width: 330)
+        .frame(width: 360)
     }
 
     // MARK: Parçalar
@@ -223,63 +223,71 @@ private struct GroupRow: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(group.name)
                     .font(.system(size: 13))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                     .foregroundStyle(isMuted ? .secondary : .primary)
                 if let subtitle {
                     Text(subtitle)
                         .font(.system(size: 10))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                         .foregroundStyle(.secondary)
                 }
             }
 
-            Spacer(minLength: 4)
+            Spacer(minLength: 6)
 
-            if group.isPlaying {
-                Image(systemName: "waveform")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.green)
-                    .help("Şu an ses çalıyor")
-            }
-
-            // Solo: bu hariç her şeyi sustur. Üstüne gelince beliriyor,
-            // solo etkinken sabit kalıyor ki geri almak için arayıp durmayasın.
-            if hovering || isSoloed {
-                Button { model.solo(group) } label: {
-                    Image(systemName: isSoloed ? "s.square.fill" : "s.square")
-                        .font(.system(size: 13))
-                        .foregroundStyle(isSoloed ? AnyShapeStyle(.orange) : AnyShapeStyle(HierarchicalShapeStyle.secondary))
-                }
-                .buttonStyle(.plain)
-                .help(isSoloed ? "Solo'dan çık, önceki duruma dön" : "Bu hariç hepsini sustur")
-            }
+            // Sıralama önemli: kaydırıcı en solda ve yalnızca gerektiğinde yer kaplıyor,
+            // böylece belirip kaybolduğunda sağındaki düğmeleri itmiyor. Diğerleri sabit
+            // genişlikte sütunlar; görünmedikleri durumda da yerlerini koruyorlar, yoksa
+            // her satırda farklı hizaya düşüyorlardı.
 
             if showsSlider {
                 Slider(value: volumeBinding, in: 0...1) { editing in
                     if !editing { model.setVolume(model.volume(group.bundleID), bundleID: group.bundleID) }
                 }
                 .controlSize(.mini)
-                .frame(width: 62)
+                .frame(width: 58)
                 .tint(.secondary)
                 .help("Ses seviyesi")
             }
 
-            if group.members.count > 1 {
-                Button(action: toggleExpand) {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 16, height: 16)
-                }
-                .buttonStyle(.plain)
-                .help("Alt süreçleri göster")
+            Image(systemName: "waveform")
+                .font(.system(size: 11))
+                .foregroundStyle(.green)
+                .frame(width: 13)
+                .opacity(group.isPlaying ? 1 : 0)
+                .help("Şu an ses çalıyor")
+
+            Button { model.solo(group) } label: {
+                Image(systemName: isSoloed ? "s.square.fill" : "s.square")
+                    .font(.system(size: 13))
+                    .foregroundStyle(isSoloed ? AnyShapeStyle(.orange) : AnyShapeStyle(HierarchicalShapeStyle.secondary))
             }
+            .buttonStyle(.plain)
+            .frame(width: 16)
+            .opacity(hovering || isSoloed ? 1 : 0)
+            .allowsHitTesting(hovering || isSoloed)
+            .help(isSoloed ? "Solo'dan çık, önceki duruma dön" : "Bu hariç hepsini sustur")
+
+            Button(action: toggleExpand) {
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .frame(width: 12)
+            .opacity(group.members.count > 1 ? 1 : 0)
+            .allowsHitTesting(group.members.count > 1)
+            .help("Alt süreçleri göster")
 
             Button { model.toggle(group) } label: {
                 Image(systemName: isMuted ? "speaker.slash.fill" : speakerSymbol)
                     .font(.system(size: 12))
                     .foregroundStyle(isMuted ? .red : .secondary)
-                    .frame(width: 20)
             }
             .buttonStyle(.plain)
+            .frame(width: 16)
             .help(isMuted ? "Sesi aç" : "Sustur")
         }
         .padding(.horizontal, 6)

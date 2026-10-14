@@ -30,6 +30,11 @@ final class ShutUpDelegate: NSObject, NSApplicationDelegate {
         popover.contentViewController = NSHostingController(rootView: PanelView().environmentObject(model))
 
         model.startListening()
+
+        // Geliştirme kolaylığı: paneli açılışta aç (ekran görüntüsüyle düzen kontrolü için).
+        if ProcessInfo.processInfo.environment["SHUTUP_OPEN_PANEL"] != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in self?.togglePanel() }
+        }
         model.ensureLaunchAtLogin()
 
         // Simge, susturulmuş uygulama var mı bilgisini yansıtsın.

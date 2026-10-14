@@ -42,7 +42,7 @@ enum StatusIcon {
                      xRadius: lineWidth / 2, yRadius: lineWidth / 2).fill()
 
         // Gözler
-        let eyeY = screen.minY + screen.height * (taped ? 0.64 : 0.56)
+        let eyeY = screen.minY + screen.height * (taped ? 0.64 : 0.62)
         let eyeSize = size * 0.115
         let eyeSpacing = size * 0.195
         for sign in [-1.0, 1.0] as [CGFloat] {
@@ -54,13 +54,10 @@ enum StatusIcon {
         let mouthY = screen.minY + screen.height * 0.34
 
         guard taped else {
-            let halfMouth = size * 0.19
-            let mouth = NSBezierPath()
-            mouth.move(to: NSPoint(x: size * 0.5 - halfMouth, y: mouthY))
-            mouth.line(to: NSPoint(x: size * 0.5 + halfMouth, y: mouthY))
-            mouth.lineWidth = lineWidth * 0.95
-            mouth.lineCapStyle = .round
-            mouth.stroke()
+            // Açık ağız: susturulmamışken Mac konuşuyor.
+            let width = size * 0.23, height = size * 0.20
+            NSBezierPath(ovalIn: NSRect(x: size * 0.5 - width / 2, y: mouthY - height / 2,
+                                        width: width, height: height)).fill()
             return
         }
 
