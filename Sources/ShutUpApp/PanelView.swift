@@ -193,6 +193,7 @@ private struct GroupRow: View {
 
     private var isMuted: Bool { model.isMuted(group.bundleID) }
     private var volume: Float { model.volume(group.bundleID) }
+    private var isSoloed: Bool { model.isSoloed(group) }
 
     /// Kaydırıcı sürekli durmaz: ya üstüne geliyorsun ya da ses zaten kısık.
     /// Böylece liste sakin kalır ama ayar bir hareket uzakta olur.
@@ -237,6 +238,18 @@ private struct GroupRow: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.green)
                     .help("Şu an ses çalıyor")
+            }
+
+            // Solo: bu hariç her şeyi sustur. Üstüne gelince beliriyor,
+            // solo etkinken sabit kalıyor ki geri almak için arayıp durmayasın.
+            if hovering || isSoloed {
+                Button { model.solo(group) } label: {
+                    Image(systemName: isSoloed ? "s.square.fill" : "s.square")
+                        .font(.system(size: 13))
+                        .foregroundStyle(isSoloed ? AnyShapeStyle(.orange) : AnyShapeStyle(HierarchicalShapeStyle.secondary))
+                }
+                .buttonStyle(.plain)
+                .help(isSoloed ? "Solo'dan çık, önceki duruma dön" : "Bu hariç hepsini sustur")
             }
 
             if showsSlider {

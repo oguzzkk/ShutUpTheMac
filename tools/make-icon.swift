@@ -56,7 +56,7 @@ func drawIcon(size: CGFloat) -> NSImage {
                                                  width: size * 0.43, height: size * 0.084),
                              xRadius: size * 0.006, yRadius: size * 0.006)
     let transform = NSAffineTransform()
-    transform.translateX(by: size * 0.50, yBy: screen.midY - size * 0.095)
+    transform.translateX(by: size * 0.50, yBy: screen.midY - size * 0.080)
     transform.rotate(byDegrees: -10)
     strip.transform(using: transform as AffineTransform)
     tape.setFill(); strip.fill()

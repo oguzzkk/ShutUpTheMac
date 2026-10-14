@@ -16,9 +16,16 @@ public struct AppGroup: Identifiable, Hashable, Sendable {
     public var playingCount: Int { members.filter(\.isPlaying).count }
 
     public var icon: NSImage? {
-        if let fromMember = members.compactMap(\.icon).first { return fromMember }
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return nil }
-        return NSWorkspace.shared.icon(forFile: url.path)
+        // Önce uygulamanın kendi kimliğinden: Safari'nin sesini çalan WebKit süreçlerinin
+        // ikonu yok, grubun ilk üyesine bakınca boş kutu çıkıyordu.
+        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first,
+           let icon = app.icon {
+            return icon
+        }
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+            return NSWorkspace.shared.icon(forFile: url.path)
+        }
+        return members.compactMap(\.icon).first
     }
 
 

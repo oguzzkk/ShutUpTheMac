@@ -168,6 +168,36 @@ final class ShutUpModel: ObservableObject {
         reapply()
     }
 
+    /// Bu uygulama hariç her şeyi sustur (DAW'lardaki solo mantığı).
+    /// İkinci kez basıldığında solo'dan önceki duruma dönülür.
+    func solo(_ group: AppGroup) {
+        settings.recordUsage(group.bundleID)
+
+        if isSoloed(group), let snapshot = settings.snapshot {
+            settings.volumes = snapshot
+            settings.snapshot = nil
+            reapply()
+            return
+        }
+
+        if settings.snapshot == nil { settings.snapshot = settings.volumes }
+        var volumes = settings.volumes
+        for other in visibleGroups where other.bundleID != group.bundleID {
+            volumes[other.bundleID] = 0
+        }
+        volumes.removeValue(forKey: group.bundleID)   // solo edilen tam sesle açılır
+        settings.volumes = volumes
+        reapply()
+    }
+
+    /// Yalnızca bu uygulama duyuluyor mu? (Düğmenin açık/kapalı görünmesi için.)
+    func isSoloed(_ group: AppGroup) -> Bool {
+        guard settings.hasSnapshot, settings.volume(for: group.bundleID) >= 1 else { return false }
+        let others = visibleGroups.filter { $0.bundleID != group.bundleID }
+        guard !others.isEmpty else { return false }
+        return others.allSatisfy { settings.isMuted($0.bundleID) }
+    }
+
     /// Öndeki uygulama hariç her şeyi sustur. Bu da geri alınabilir:
     /// ilk basışta önceki durum saklanır.
     func soloFrontmost() {

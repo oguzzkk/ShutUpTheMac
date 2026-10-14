@@ -124,6 +124,33 @@ do {
         print("Çalışan tap'ler ve aggregate aygıtlar:")
         for line in Diagnostics.audioObjects() { print("  " + line) }
 
+    case "solo", "yalniz":
+        // Paneldeki satır düğmesiyle aynı davranış: bu hariç hepsini sustur,
+        // ikinci çağrıda önceki duruma dön.
+        guard arguments.count >= 2 else { throw NSError(domain: "shutup", code: 2, userInfo: [NSLocalizedDescriptionKey: "kullanım: shutup solo <uygulama>"]) }
+        let bundleID = try resolve(arguments[1])
+        let groups = try AppGroup.current(settings: settings).filter(\.isUserFacing)
+        let others = groups.filter { $0.bundleID != bundleID }
+        let alreadySolo = settings.hasSnapshot
+            && settings.volume(for: bundleID) >= 1
+            && !others.isEmpty
+            && others.allSatisfy { settings.isMuted($0.bundleID) }
+
+        if alreadySolo, let snapshot = settings.snapshot {
+            settings.volumes = snapshot
+            settings.snapshot = nil
+            print("↩︎ solo kapatıldı, önceki duruma dönüldü")
+        } else {
+            if settings.snapshot == nil { settings.snapshot = settings.volumes }
+            var volumes = settings.volumes
+            for other in others { volumes[other.bundleID] = 0 }
+            volumes.removeValue(forKey: bundleID)
+            settings.volumes = volumes
+            print("🎧 yalnız \(bundleID) duyuluyor")
+        }
+        settings.recordUsage(bundleID)
+        settings.broadcastChange()
+
     case "muteall", "hepsi":
         // Panel düğmesiyle aynı davranış: ikinci çağrıda önceki duruma döner.
         if let snapshot = settings.snapshot {
@@ -160,6 +187,7 @@ do {
           shutup mute <uygulama>         sustur
           shutup unmute <uygulama>       sesi geri aç
           shutup volume <uygulama> <0-100>  seviye ayarla
+          shutup solo <uygulama>         bu hariç hepsini sustur / tekrar çalıştırınca geri al
           shutup muteall                 hepsini sustur / tekrar çalıştırınca geri al
           shutup status                  uygulamanın o anki durumu
           shutup reset                   hepsini tam sese döndür

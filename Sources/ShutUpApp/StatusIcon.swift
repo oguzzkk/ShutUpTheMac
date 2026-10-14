@@ -51,7 +51,7 @@ enum StatusIcon {
                                         width: eyeSize, height: eyeSize)).fill()
         }
 
-        let mouthY = screen.minY + screen.height * 0.26
+        let mouthY = screen.minY + screen.height * 0.34
 
         guard taped else {
             let halfMouth = size * 0.19
