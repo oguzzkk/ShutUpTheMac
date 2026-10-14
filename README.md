@@ -69,6 +69,10 @@ Per-app paths matter: with one shared path, unmuting a single app tore down and 
 - **Private taps are only visible to the process that created them**, so you cannot inspect the app's taps from a CLI — hence `shutup status`.
 - **Safari's audio comes from a process whose parent is `launchd`**, not Safari. Walking the parent chain is not enough; macOS's own responsible-process mapping is what connects them.
 
+## License
+
+MIT — see [LICENSE](LICENSE).
+
 ## Notes
 
 Source comments and the user interface are in Turkish.

@@ -65,8 +65,8 @@ enum StatusIcon {
         for sign in [-1.0, 1.0] as [CGFloat] {
             let x = size * 0.50 + sign * eyeSpacing
             let brow = NSBezierPath()
-            brow.move(to: NSPoint(x: x - sign * size * 0.068, y: eyeY + size * 0.072))
-            brow.line(to: NSPoint(x: x + sign * size * 0.068, y: eyeY + size * 0.130))
+            brow.move(to: NSPoint(x: x - sign * size * 0.068, y: eyeY + size * 0.130))
+            brow.line(to: NSPoint(x: x + sign * size * 0.068, y: eyeY + size * 0.072))
             brow.lineWidth = lineWidth * 0.95
             brow.lineCapStyle = .round
             brow.stroke()
