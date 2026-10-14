@@ -19,9 +19,9 @@ SHUTUP="$(cd "$(dirname "$0")/.." && pwd)/.build/release/shutup"
 
 status_field() { "$SHUTUP" status 2>/dev/null | grep "\"$1\"" | head -1 | grep -oE '[0-9]+(\.[0-9]+)?' | head -1; }
 
-[ -f "$LOG" ] || printf "zaman\tpid\tcpu\tbellek_mb\tthread\ttanitici\ttap\tcagri\tcokme\tnot\n" > "$LOG"
+[ -f "$LOG" ] || printf "zaman\tpid\tcpu\tbellek_mb\tthread\ttanitici\ttap\tcagri\tkesilme\tcokme\tnot\n" > "$LOG"
 
-first_rss=""; first_threads=""; prev_callbacks=""; prev_taps=""; count=0
+first_rss=""; first_threads=""; prev_callbacks=""; prev_taps=""; prev_pid=""; count=0
 crash_base=$(ls ~/Library/Logs/DiagnosticReports/ 2>/dev/null | grep -ci "shutup")
 
 echo "izleme başladı — aralık ${INTERVAL}sn, günlük: $LOG"
@@ -41,6 +41,11 @@ while :; do
         taps=$(status_field kuruluTap)
         callbacks=$(status_field cagri)
         crashes=$(ls ~/Library/Logs/DiagnosticReports/ 2>/dev/null | grep -ci "shutup")
+        drops=$(status_field sesKesilmesi)
+        if [ -n "${prev_drops:-}" ] && [ "${drops:-0}" -gt "$((prev_drops + 5))" ]; then
+            note="${note}SES KESİLMESİ ARTIYOR ($prev_drops→$drops); "
+        fi
+        prev_drops="$drops"
 
         [ -z "$first_rss" ] && first_rss="$mem"
         [ -z "$first_threads" ] && first_threads="$threads"
@@ -49,22 +54,24 @@ while :; do
         awk -v a="$mem" -v b="$first_rss" 'BEGIN{exit !(b>0 && a > b*2)}' && note="${note}BELLEK x2; "
         # İş parçacıkları sürekli artıyorsa takılan kurulum iş parçacıkları birikiyor olabilir
         [ "$threads" -gt $((first_threads + 10)) ] && note="${note}THREAD +10; "
-        # Ses yolu açıkken IOProc ilerlemiyorsa yol sessizce durmuş demektir
-        if [ -n "${prev_callbacks:-}" ] && [ "${taps:-0}" -gt 0 ] && [ "${callbacks:-0}" = "$prev_callbacks" ]; then
+        # Ses yolu açıkken IOProc ilerlemiyorsa yol sessizce durmuş demektir.
+        # Uygulama yeniden başladıysa sayaç sıfırlanır; o yüzden aynı pid şartı aranıyor.
+        if [ -n "${prev_callbacks:-}" ] && [ "${prev_pid:-}" = "$pid" ] \
+           && [ "${taps:-0}" -gt 0 ] && [ "${callbacks:-0}" = "$prev_callbacks" ]; then
             note="${note}SES YOLU DURMUŞ; "
         fi
         # Ayar varken tap yoksa susturma uygulanmıyordur
         [ "${taps:-0}" = "0" ] && [ -n "$("$SHUTUP" status 2>/dev/null | grep -A2 kisilmis | grep ':')" ] && note="${note}AYAR VAR TAP YOK; "
         [ "$crashes" -gt "$crash_base" ] && note="${note}YENİ ÇÖKME; "
 
-        printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
-            "$now" "$pid" "$cpu" "$mem" "$threads" "$handles" "${taps:-?}" "${callbacks:-?}" "$crashes" "${note:-ok}" >> "$LOG"
+        printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+            "$now" "$pid" "$cpu" "$mem" "$threads" "$handles" "${taps:-?}" "${callbacks:-?}" "${drops:-?}" "$crashes" "${note:-ok}" >> "$LOG"
         if [ -n "$note" ]; then
             echo "$now  ⚠️  $note(bellek ${mem}MB, thread $threads, tap ${taps:-?})"
         else
             echo "$now  ok   bellek ${mem}MB · thread $threads · tanıtıcı $handles · tap ${taps:-?} · cpu ${cpu}%"
         fi
-        prev_callbacks="$callbacks"; prev_taps="$taps"
+        prev_callbacks="$callbacks"; prev_taps="$taps"; prev_pid="$pid"
     fi
 
     count=$((count + 1))
