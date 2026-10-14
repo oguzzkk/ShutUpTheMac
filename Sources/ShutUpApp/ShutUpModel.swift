@@ -268,6 +268,7 @@ final class ShutUpModel: ObservableObject {
             "izinGerekiyor": volumeEngine.needsPermission,
             "kuruluTap": volumeEngine.activeTapCount,
             "yolunCikisAygiti": volumeEngine.boundOutputDevices,
+            "sesKesilmesi": VolumeEngine.overloads,
             "olcer": ["giris": VolumeEngine.meters.inputPeak,
                       "cikis": VolumeEngine.meters.outputPeak,
                       "cagri": VolumeEngine.meters.callbacks],

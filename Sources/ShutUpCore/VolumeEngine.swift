@@ -1,3 +1,4 @@
+import Accelerate
 import CoreAudio
 import Foundation
 import OSLog
@@ -45,6 +46,7 @@ public final class VolumeEngine {
         var tapID = AudioObjectID(kAudioObjectUnknown)
         var aggregateID = AudioObjectID(kAudioObjectUnknown)
         var ioProcID: AudioDeviceIOProcID?
+        var overloadListener: AudioObjectPropertyListenerBlock?
         /// Yolun bağlı olduğu çıkış aygıtı — kulaklık/hoparlör değişiminde
         /// yolun gerçekten yenilendiğini dışarıdan doğrulayabilmek için.
         var outputDeviceName = "?"
@@ -55,6 +57,18 @@ public final class VolumeEngine {
             self.identity = identity
         }
     }
+
+    /// Susturulmuş uygulamaların hepsi tek bir yolda toplanır.
+    ///
+    /// Her uygulamaya ayrı aggregate device vermek, her biri saniyede ~86 kez uyanan
+    /// ayrı bir gerçek zamanlı iş parçacığı demekti; 15 susturulmuş uygulamada bu
+    /// ölçülebilir dropout üretiyordu. Susturulanların çıktısı zaten aynı (sessizlik),
+    /// dolayısıyla tek tap listesi yeterli. Listeye biri girip çıktığında yol yeniden
+    /// kuruluyor ama bu duyulmaz: içindeki her şey zaten sessiz.
+    ///
+    /// Seviyesi kısılmış (0 < kazanç < 1) uygulamalar kendi yollarında kalır; onların
+    /// her birinin kazancı farklı ve sesi gerçekten çalınıyor.
+    private static let silentChannelKey = "\u{0000}muted"
 
     private var channels: [String: Channel] = [:]
     /// Kurulumu süren (ve belki takılmış) uygulamalar — aynı anda ikinci deneme açılmasın.
@@ -76,6 +90,8 @@ public final class VolumeEngine {
     public var permissionGranted = false
 
     public static var trace = false
+    /// Ses donanımının takvimini kaçırdığımız durumların sayısı (dropout).
+    public nonisolated(unsafe) static var overloads: UInt64 = 0
     public private(set) static var meters = Meters()
 
     public init() {
@@ -114,14 +130,27 @@ public final class VolumeEngine {
     private func applyOnAudioQueue(_ targets: [Target]) {
         let valid = targets.filter { !$0.members.isEmpty || !$0.processBundleIDs.isEmpty }
         lastTargets = valid
-        let wanted = Set(valid.map(\.bundleID))
+
+        let silent = valid.filter { $0.gain <= 0 }
+        let attenuated = valid.filter { $0.gain > 0 }
+
+        // Susturulanları tek bir hedefte birleştir.
+        let merged: Target? = silent.isEmpty ? nil : Target(
+            bundleID: Self.silentChannelKey,
+            name: "susturulanlar (\(silent.count))",
+            members: silent.reduce(into: Set<AudioObjectID>()) { $0.formUnion($1.members) },
+            processBundleIDs: silent.reduce(into: Set<String>()) { $0.formUnion($1.processBundleIDs) },
+            gain: 0)
+
+        let effective = attenuated + (merged.map { [$0] } ?? [])
+        let wanted = Set(effective.map(\.bundleID))
 
         // Artık ayarı olmayan uygulamaların yolunu kapat — diğerlerine dokunmadan.
         for bundleID in channels.keys where !wanted.contains(bundleID) {
             closeChannel(bundleID)
         }
 
-        for target in valid {
+        for target in effective {
             if let channel = channels[target.bundleID] {
                 if channel.identity == identity(of: target) {
                     channel.gain.value = target.gain      // yalnızca seviye değişti
@@ -266,6 +295,17 @@ public final class VolumeEngine {
 
         guard let procID else { throw CAError(status: -1, what: "IOProc kimliği") }
         channel.ioProcID = procID
+
+        // Core Audio, IOProc zamanında yetişemediğinde bunu bildiriyor. Sesteki
+        // takılmaların objektif ölçüsü bu: sayaç artıyorsa gerçekten dropout var.
+        var overloadAddress = propertyAddress(kAudioDeviceProcessorOverload)
+        let overloadListener: AudioObjectPropertyListenerBlock = { _, _ in
+            Self.overloads &+= 1
+        }
+        channel.overloadListener = overloadListener
+        AudioObjectAddPropertyListenerBlock(channel.aggregateID, &overloadAddress,
+                                            audioListenerQueue, overloadListener)
+
         try check(AudioDeviceStart(channel.aggregateID, procID), "IOProc başlatma")
 
         trace("yol açıldı: \(target.name) · süreç=\(target.members.count) · kazanç=\(target.gain)")
@@ -274,6 +314,10 @@ public final class VolumeEngine {
 
     private func closeChannel(_ bundleID: String) {
         guard let channel = channels.removeValue(forKey: bundleID) else { return }
+        if let listener = channel.overloadListener, channel.aggregateID != AudioObjectID(kAudioObjectUnknown) {
+            var address = propertyAddress(kAudioDeviceProcessorOverload)
+            AudioObjectRemovePropertyListenerBlock(channel.aggregateID, &address, audioListenerQueue, listener)
+        }
         if let procID = channel.ioProcID {
             AudioDeviceStop(channel.aggregateID, procID)
             AudioDeviceDestroyIOProcID(channel.aggregateID, procID)
@@ -289,40 +333,70 @@ public final class VolumeEngine {
 
     /// Gerçek zamanlı geri çağırım: tap girdisini kazançla çıkışa yazar.
     /// Bellek ayırma, kilit ve log yok — aksi hâlde ses kesilir.
+    /// Gerçek zamanlı geri çağırım. Burada yapılan her fazladan iş, ses kesilmesi
+    /// (dropout) riski demek: bu blok her ~6 milisaniyede bir, ses donanımının
+    /// takviminde çalışıyor ve geç kalırsa Core Audio "overload" sayıyor.
+    ///
+    /// İki şey önemli:
+    ///  • Tam susturmada girdiye hiç bakmıyoruz — çıkışı sıfırlayıp çıkıyoruz.
+    ///    En sık kullanılan durum bu ve neredeyse bedava.
+    ///  • Seviye kısmada örnek örnek Swift döngüsü yerine vDSP kullanılıyor (SIMD).
+    ///  • Ölçerler her çağrıda değil, seyrek güncelleniyor; tanı içindir, sesten önemli değil.
     private static func render(input: UnsafePointer<AudioBufferList>,
                                output: UnsafeMutablePointer<AudioBufferList>,
                                gain: Float) {
-        let inputBuffers = UnsafeBufferPointer(start: &UnsafeMutablePointer(mutating: input).pointee.mBuffers,
-                                               count: Int(input.pointee.mNumberBuffers))
         let outputBuffers = UnsafeMutableAudioBufferListPointer(output)
-
         for outputBuffer in outputBuffers {
             memset(outputBuffer.mData, 0, Int(outputBuffer.mDataByteSize))
         }
 
+        guard gain > 0 else {
+            // Susturma: çıkış sıfırlandı, girdiyi işlemeye gerek yok.
+            // Yalnızca tanı için, 32 çağrıda bir girdinin tepe değerini ölçüyoruz —
+            // "gerçekten ses yakalanıyor mu" sorusunun tek dışarıdan görünür kanıtı bu.
+            meterTick &+= 1
+            guard meterTick % 32 == 0,
+                  let source = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input)).first,
+                  let sourceData = source.mData?.assumingMemoryBound(to: Float32.self) else { return }
+            var peak: Float = 0
+            vDSP_maxmgv(sourceData, 1, &peak, vDSP_Length(Int(source.mDataByteSize) / MemoryLayout<Float32>.size))
+            meters.record(input: peak, output: 0)
+            return
+        }
+
         guard let destination = outputBuffers.first,
               let destinationData = destination.mData?.assumingMemoryBound(to: Float32.self) else { return }
-        let frameCount = Int(destination.mDataByteSize) / MemoryLayout<Float32>.size
+        let frameCount = vDSP_Length(Int(destination.mDataByteSize) / MemoryLayout<Float32>.size)
 
+        let inputBuffers = UnsafeBufferPointer(start: &UnsafeMutablePointer(mutating: input).pointee.mBuffers,
+                                               count: Int(input.pointee.mNumberBuffers))
+        var scale = gain
         var inputPeak: Float = 0
-        var outputPeak: Float = 0
 
         for index in 0..<inputBuffers.count {
             let buffer = inputBuffers[index]
             guard let sourceData = buffer.mData?.assumingMemoryBound(to: Float32.self) else { continue }
-            let count = min(frameCount, Int(buffer.mDataByteSize) / MemoryLayout<Float32>.size)
+            let count = min(frameCount, vDSP_Length(Int(buffer.mDataByteSize) / MemoryLayout<Float32>.size))
 
-            for sample in 0..<count {
-                let value = sourceData[sample]
-                if abs(value) > inputPeak { inputPeak = abs(value) }
-                let mixed = destinationData[sample] + value * gain
-                destinationData[sample] = mixed
-                if abs(mixed) > outputPeak { outputPeak = abs(mixed) }
+            // çıkış = giriş * kazanç + çıkış
+            vDSP_vsma(sourceData, 1, &scale, destinationData, 1, destinationData, 1, count)
+
+            if meterTick % 32 == 0 {
+                var peak: Float = 0
+                vDSP_maxmgv(sourceData, 1, &peak, count)
+                if peak > inputPeak { inputPeak = peak }
             }
         }
 
-        meters.record(input: inputPeak, output: outputPeak)
+        meterTick &+= 1
+        if meterTick % 32 == 0 {
+            var outputPeak: Float = 0
+            vDSP_maxmgv(destinationData, 1, &outputPeak, frameCount)
+            meters.record(input: inputPeak, output: outputPeak)
+        }
     }
+
+    private nonisolated(unsafe) static var meterTick: UInt64 = 0
 
     private func defaultOutputDevice() throws -> AudioObjectID {
         guard let deviceID = scalar(AudioObjectID(kAudioObjectSystemObject),
