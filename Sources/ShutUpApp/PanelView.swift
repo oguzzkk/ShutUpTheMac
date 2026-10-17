@@ -304,7 +304,7 @@ private struct GroupRow: View {
     @ViewBuilder
     private var icon: some View {
         if let image = group.icon {
-            Image(nsImage: image).resizable().frame(width: 18, height: 18)
+            Image(nsImage: image).frame(width: 18, height: 18)
         } else {
             Image(systemName: "app.dashed").foregroundStyle(.secondary).frame(width: 18)
         }

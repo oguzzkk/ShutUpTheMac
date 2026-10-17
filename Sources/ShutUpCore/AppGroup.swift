@@ -15,17 +15,10 @@ public struct AppGroup: Identifiable, Hashable, Sendable {
     public var isPlaying: Bool { members.contains(where: \.isPlaying) }
     public var playingCount: Int { members.filter(\.isPlaying).count }
 
+    /// Menü boyutunda, önbellekten. Safari gibi uygulamalarda sesi çalan yardımcı
+    /// süreçlerin ikonu olmadığı için önce uygulamanın kendi kimliği kullanılıyor.
     public var icon: NSImage? {
-        // Önce uygulamanın kendi kimliğinden: Safari'nin sesini çalan WebKit süreçlerinin
-        // ikonu yok, grubun ilk üyesine bakınca boş kutu çıkıyordu.
-        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first,
-           let icon = app.icon {
-            return icon
-        }
-        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
-            return NSWorkspace.shared.icon(forFile: url.path)
-        }
-        return members.compactMap(\.icon).first
+        IconCache.icon(for: bundleID) ?? members.compactMap(\.icon).first
     }
 
 

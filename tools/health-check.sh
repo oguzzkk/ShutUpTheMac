@@ -34,8 +34,11 @@ while :; do
         printf "%s\t-\t-\t-\t-\t-\t-\t-\t-\tUYGULAMA ÇALIŞMIYOR\n" "$now" >> "$LOG"
         echo "$now  ⚠️  uygulama çalışmıyor"
     else
-        read -r cpu rss <<< "$(ps -p "$pid" -o %cpu=,rss= | awk '{print $1, $2}')"
-        mem=$(awk -v r="$rss" 'BEGIN{printf "%.1f", r/1024}')
+        cpu=$(ps -p "$pid" -o %cpu= | tr -d ' ')
+        # ps'in RSS'i paylaşılan kütüphane sayfalarını da sayar ve olduğundan büyük
+        # görünür. macOS'un uygulamaya yazdığı gerçek bellek phys_footprint'tir.
+        mem=$(footprint -p "$pid" 2>/dev/null | awk '/phys_footprint:/ {print $2; exit}')
+        [ -z "$mem" ] && mem=$(ps -p "$pid" -o rss= | awk '{printf "%.1f", $1/1024}')
         threads=$(ps -M "$pid" 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')
         handles=$(lsof -p "$pid" 2>/dev/null | wc -l | tr -d ' ')
         taps=$(status_field kuruluTap)
